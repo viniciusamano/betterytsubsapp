@@ -55,12 +55,19 @@ export async function importTakeoutCsv(
         set: { name: sql`excluded.name` },
       });
   } catch (error) {
-    // Surfaced verbatim on purpose while we're bringing the first deploy up —
-    // this is what tells us whether DATABASE_URL is missing, malformed, or
-    // the database is unreachable, instead of a blank framework error page.
+    // postgres.js wraps connection-level failures (wrong host, refused,
+    // auth) in a generic "Failed query: <sql> params: <...>" message and
+    // puts the actual reason in `.cause` — surface that instead, or the
+    // whole insert statement (with every channel name) ends up on screen.
+    console.error("Import insert failed:", error);
+    const cause =
+      error instanceof Error && error.cause instanceof Error
+        ? error.cause.message
+        : undefined;
+    const message = error instanceof Error ? error.message : String(error);
     return {
       status: "error",
-      message: `Erro ao gravar no banco: ${error instanceof Error ? error.message : String(error)}`,
+      message: `Erro ao gravar no banco: ${(cause ?? message).slice(0, 500)}`,
     };
   }
 
