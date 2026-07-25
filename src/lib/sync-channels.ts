@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { channels } from "@/db/schema";
 
@@ -91,9 +91,14 @@ export async function syncChannels(limit = 25): Promise<SyncResult> {
     throw new Error("YOUTUBE_API_KEY não configurada.");
   }
 
+  // Never-synced channels first (nulls first), then whoever was synced
+  // longest ago — so repeated calls make progress across the whole catalog
+  // instead of refreshing the same rows, and a future daily run naturally
+  // refreshes the stalest channels first.
   const targets = await db
     .select({ id: channels.id })
     .from(channels)
+    .orderBy(sql`${channels.syncedAt} asc nulls first`)
     .limit(limit);
 
   const ids = targets.map((c) => c.id);
