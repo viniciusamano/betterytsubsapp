@@ -1,7 +1,7 @@
 <title>Meus Canais — Protótipo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#EDE4D3;
@@ -35,7 +35,16 @@
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   }
   @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
-  .page{max-width:1360px;margin:0 auto;padding:32px 24px 80px;display:flex;flex-direction:column;gap:14px;}
+
+  /* background atmosphere: dot grid, oversized watermark type, corner glyphs — all fixed, all decorative */
+  .bg-decor{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;}
+  .bg-dots{position:absolute;inset:0;background-image:radial-gradient(var(--border-soft) 1px, transparent 1px);background-size:28px 28px;opacity:.55;}
+  .bg-word{position:absolute;top:-58px;left:50%;transform:translateX(-50%);font-family:'Michroma',var(--font-display);font-size:min(19vw,260px);line-height:1;color:transparent;-webkit-text-stroke:1px var(--border-soft);white-space:nowrap;letter-spacing:.03em;user-select:none;}
+  .bg-shape{position:absolute;color:var(--border-soft);}
+  .bg-shape.tr{top:-70px;right:-70px;width:280px;height:280px;}
+  .bg-shape.bl{bottom:-90px;left:-90px;width:320px;height:320px;}
+
+  .page{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:32px 24px 80px;display:flex;flex-direction:column;gap:14px;}
 
   /* logo mark */
   .mark{width:22px;height:22px;flex:none;color:var(--ink);}
@@ -64,7 +73,7 @@
   .ticker-track{display:flex;width:max-content;animation:ticker 34s linear infinite;}
   .ticker-seq{display:flex;align-items:center;flex:none;padding:9px 0;}
   .ticker-item{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:0 16px;white-space:nowrap;}
-  .ticker-sep{color:var(--border);font-size:9px;flex:none;}
+  .ticker-sep{color:var(--border);flex:none;vertical-align:middle;}
   @keyframes ticker{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
 
   /* status bar */
@@ -271,6 +280,13 @@
   footer.note{margin-top:6px;color:var(--text-faint);font-size:11px;text-align:center;font-family:var(--font-mono);}
 </style>
 
+<div class="bg-decor">
+  <div class="bg-dots"></div>
+  <div class="bg-word">CANAIS</div>
+  <svg class="bg-shape tr" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="2" width="36" height="36"/><rect x="10" y="10" width="20" height="20"/><rect x="17" y="17" width="6" height="6"/></svg>
+  <svg class="bg-shape bl" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1"><path d="M50 6 L94 90 L6 90 Z"/><path d="M50 22 L82 84 L18 84 Z"/><path d="M50 38 L70 78 L30 78 Z"/></svg>
+</div>
+
 <div class="page">
   <header class="appbar">
     <div class="titleblock">
@@ -472,8 +488,9 @@
   function channelByHandle(h){ return CHANNELS.find(function(c){ return c.handle===h; }); }
   function totalColCount(){ return 5 + PROPERTIES.filter(function(p){return p.visible;}).length + CORE_COLUMNS.filter(function(c){return c.visible;}).length; }
 
+  var CHECKER_SVG = '<svg class="ticker-sep" viewBox="0 0 8 8" width="9" height="9" fill="currentColor"><rect x="0" y="0" width="2" height="2"/><rect x="4" y="0" width="2" height="2"/><rect x="2" y="2" width="2" height="2"/><rect x="6" y="2" width="2" height="2"/><rect x="0" y="4" width="2" height="2"/><rect x="4" y="4" width="2" height="2"/><rect x="2" y="6" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/></svg>';
   function renderTicker(){
-    var seq = TICKER_ITEMS.map(function(t){ return '<span class="ticker-item">'+t+'</span><span class="ticker-sep">◆</span>'; }).join("");
+    var seq = TICKER_ITEMS.map(function(t){ return '<span class="ticker-item">'+t+'</span>'+CHECKER_SVG; }).join("");
     document.getElementById("tickerTrack").innerHTML = '<div class="ticker-seq">'+seq+'</div><div class="ticker-seq">'+seq+'</div>';
   }
   function tickClock(){
