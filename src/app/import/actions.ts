@@ -46,13 +46,23 @@ export async function importTakeoutCsv(
 
   // Upsert by channel id: re-importing an updated export refreshes the name
   // without touching stats a previous sync may have already filled in.
-  await db
-    .insert(channels)
-    .values(rows.map((row) => ({ id: row.channelId, name: row.channelTitle })))
-    .onConflictDoUpdate({
-      target: channels.id,
-      set: { name: sql`excluded.name` },
-    });
+  try {
+    await db
+      .insert(channels)
+      .values(rows.map((row) => ({ id: row.channelId, name: row.channelTitle })))
+      .onConflictDoUpdate({
+        target: channels.id,
+        set: { name: sql`excluded.name` },
+      });
+  } catch (error) {
+    // Surfaced verbatim on purpose while we're bringing the first deploy up —
+    // this is what tells us whether DATABASE_URL is missing, malformed, or
+    // the database is unreachable, instead of a blank framework error page.
+    return {
+      status: "error",
+      message: `Erro ao gravar no banco: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 
   return {
     status: "success",
