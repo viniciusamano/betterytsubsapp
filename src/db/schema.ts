@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   integer,
+  bigint,
   boolean,
   timestamp,
   uuid,
@@ -19,7 +20,9 @@ export const channels = pgTable("channels", {
   description: text("description"),
   subscriberCount: integer("subscriber_count"),
   videoCount: integer("video_count"),
-  viewCount: integer("view_count"),
+  // bigint: total views on a channel routinely exceeds Postgres' int4 range
+  // (2,147,483,647) for large channels.
+  viewCount: bigint("view_count", { mode: "number" }),
   lastVideoPublishedAt: timestamp("last_video_published_at", {
     withTimezone: true,
   }),

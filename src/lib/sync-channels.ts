@@ -143,8 +143,15 @@ export async function syncChannels(limit = 25): Promise<SyncResult> {
             .where(eq(channels.id, item.id));
           synced++;
         } catch (error) {
+          // Drizzle wraps driver errors in a DrizzleQueryError whose own
+          // .message is just the raw SQL + params; the actual reason (e.g. a
+          // Postgres constraint or type error) lives in .cause.
+          const cause =
+            error instanceof Error && error.cause instanceof Error
+              ? error.cause
+              : error;
           errors.push(
-            `${item.id}: ${error instanceof Error ? error.message : String(error)}`,
+            `${item.id}: ${cause instanceof Error ? cause.message : String(cause)}`,
           );
         }
       }),

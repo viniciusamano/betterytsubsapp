@@ -1,0 +1,1 @@
+ALTER TABLE "channels" ALTER COLUMN "view_count" SET DATA TYPE bigint;
