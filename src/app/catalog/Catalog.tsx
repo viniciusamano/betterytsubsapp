@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { runSync } from "@/app/actions";
+import { runClassification, runSync } from "@/app/actions";
 import type { Channel, Property } from "@/lib/catalog-types";
 import { colorFor, fmtBig, fmtInt, initials, relTime, statusLabel, statusOf, type Status } from "./format";
 import { PropertyCell } from "./PropertyCell";
@@ -38,6 +38,7 @@ export function Catalog({ channels, properties }: { channels: Channel[]; propert
   const [openDrawerId, setOpenDrawerId] = useState<string | null>(null);
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const [isSyncing, startSync] = useTransition();
+  const [isClassifying, startClassify] = useTransition();
   const columnsWrapRef = useRef<HTMLDivElement>(null);
 
   const chipsProperty = properties.find((p) => p.type === "multi_select" || p.type === "select") ?? null;
@@ -273,13 +274,22 @@ export function Catalog({ channels, properties }: { channels: Channel[]; propert
           <h1>Meus Canais</h1>
           <div className={styles.sub}>{channels.length} canais no catálogo</div>
         </div>
-        <button
-          className={styles.btn}
-          disabled={isSyncing}
-          onClick={() => startSync(async () => { await runSync(50); })}
-        >
-          {isSyncing ? "Sincronizando…" : "Sincronizar"}
-        </button>
+        <div className={styles.headerActions}>
+          <button
+            className={styles.btn}
+            disabled={isSyncing}
+            onClick={() => startSync(async () => { await runSync(50); })}
+          >
+            {isSyncing ? "Sincronizando…" : "Sincronizar"}
+          </button>
+          <button
+            className={styles.btn}
+            disabled={isClassifying}
+            onClick={() => startClassify(async () => { await runClassification(30); })}
+          >
+            {isClassifying ? "Classificando…" : "Classificar com IA"}
+          </button>
+        </div>
       </header>
 
       <div className={styles.statusbar}>

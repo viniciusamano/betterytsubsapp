@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { properties, propertyOptions, channelPropertyValues } from "@/db/schema";
 import { syncChannels } from "@/lib/sync-channels";
+import { classifySegments } from "@/lib/classify-channels";
 import { TAG_COLORS, type PropertyType } from "@/lib/catalog-types";
 
 async function upsertValue(
@@ -153,6 +154,12 @@ export async function deleteProperty(propertyId: string) {
 
 export async function runSync(limit: number) {
   const result = await syncChannels(limit);
+  revalidatePath("/");
+  return result;
+}
+
+export async function runClassification(limit: number) {
+  const result = await classifySegments(limit);
   revalidatePath("/");
   return result;
 }

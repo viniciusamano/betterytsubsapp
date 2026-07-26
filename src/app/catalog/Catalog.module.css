@@ -69,6 +69,13 @@
   font-size: 10px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* status bar */
 .statusbar {
   display: flex;
