@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { channels, properties, propertyOptions, channelPropertyValues } from "@/db/schema";
 import { TAG_COLORS } from "./catalog-types";
@@ -133,29 +133,53 @@ export async function classifySegments(limit = 30): Promise<ClassifyResult> {
       const existingLabels = existingOptions.map((o) => o.label);
       const results = await classifyBatch(client, batch, existingLabels);
 
+      // Resolve every label to an option id in memory, then do at most two
+      // round trips for the whole batch — a query per channel is what timed
+      // out the Netlify function on a 30-channel batch before this rewrite.
+      const optionByLabel = new Map(existingOptions.map((o) => [o.label.toLowerCase(), o]));
+      const newLabels: string[] = [];
       for (const result of results) {
         const label = result.label.trim();
         if (!label) continue;
-
-        let option = existingOptions.find((o) => o.label.toLowerCase() === label.toLowerCase());
-        if (!option) {
-          const color = TAG_COLORS[existingOptions.length % TAG_COLORS.length];
-          const [created] = await db
-            .insert(propertyOptions)
-            .values({ propertyId: property.id, label, color })
-            .returning();
-          option = created;
-          existingOptions.push(created);
+        const key = label.toLowerCase();
+        if (!optionByLabel.has(key) && !newLabels.some((l) => l.toLowerCase() === key)) {
+          newLabels.push(label);
         }
+      }
 
+      if (newLabels.length > 0) {
+        const created = await db
+          .insert(propertyOptions)
+          .values(
+            newLabels.map((label, idx) => ({
+              propertyId: property.id,
+              label,
+              color: TAG_COLORS[(existingOptions.length + idx) % TAG_COLORS.length],
+            })),
+          )
+          .returning();
+        for (const option of created) optionByLabel.set(option.label.toLowerCase(), option);
+      }
+
+      const valueRows = results
+        .map((result) => {
+          const label = result.label.trim();
+          const option = label ? optionByLabel.get(label.toLowerCase()) : undefined;
+          return option
+            ? { channelId: result.channelId, propertyId: property.id, valueOptionIds: [option.id] }
+            : null;
+        })
+        .filter((row): row is NonNullable<typeof row> => row !== null);
+
+      if (valueRows.length > 0) {
         await db
           .insert(channelPropertyValues)
-          .values({ channelId: result.channelId, propertyId: property.id, valueOptionIds: [option.id] })
+          .values(valueRows)
           .onConflictDoUpdate({
             target: [channelPropertyValues.channelId, channelPropertyValues.propertyId],
-            set: { valueOptionIds: [option.id] },
+            set: { valueOptionIds: sql`excluded.value_option_ids` },
           });
-        classified++;
+        classified += valueRows.length;
       }
     } catch (error) {
       const cause =
