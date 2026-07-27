@@ -38,8 +38,11 @@ async function fetchChannelBatch(ids: string[], apiKey: string): Promise<Youtube
   return data.items ?? [];
 }
 
-// Free (no quota, no API key) — the last <published> entry in a channel's
-// public upload feed is its most recent video.
+// Free (no quota, no API key) — the first <entry> in a channel's public
+// upload feed is its most recent video. The feed itself also carries a
+// top-level <published> (the channel's creation date, not a video) before
+// any <entry> — matching <published> against the whole document picks that
+// one up instead, so the date must come from inside the first <entry>.
 async function fetchLastVideoDate(channelId: string): Promise<Date | null> {
   try {
     const res = await fetch(
@@ -47,8 +50,10 @@ async function fetchLastVideoDate(channelId: string): Promise<Date | null> {
     );
     if (!res.ok) return null;
     const xml = await res.text();
-    const match = xml.match(/<published>([^<]+)<\/published>/);
-    return match ? new Date(match[1]) : null;
+    const entryMatch = xml.match(/<entry>[\s\S]*?<\/entry>/);
+    if (!entryMatch) return null;
+    const publishedMatch = entryMatch[0].match(/<published>([^<]+)<\/published>/);
+    return publishedMatch ? new Date(publishedMatch[1]) : null;
   } catch {
     return null;
   }

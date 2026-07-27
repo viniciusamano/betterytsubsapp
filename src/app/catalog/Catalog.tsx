@@ -11,11 +11,12 @@ import { PropertyMenuPopover } from "./PropertyMenuPopover";
 import { ChannelDrawer } from "./ChannelDrawer";
 import styles from "./Catalog.module.css";
 
-type CoreColumnId = "videos" | "views" | "last";
+type CoreColumnId = "videos" | "views" | "last" | "since";
 const CORE_COLUMNS: { id: CoreColumnId; label: string }[] = [
   { id: "videos", label: "Vídeos" },
   { id: "views", label: "Views totais" },
   { id: "last", label: "Último vídeo" },
+  { id: "since", label: "Canal desde" },
 ];
 
 type SortKey = "channel" | "subs" | CoreColumnId;
@@ -86,6 +87,9 @@ export function Catalog({ channels, properties }: { channels: Channel[]; propert
       } else if (sortKey === "views") {
         va = a.viewCount;
         vb = b.viewCount;
+      } else if (sortKey === "since") {
+        va = a.createdAtYoutube;
+        vb = b.createdAtYoutube;
       } else {
         va = a.lastVideoPublishedAt;
         vb = b.lastVideoPublishedAt;
@@ -503,6 +507,14 @@ export function Catalog({ channels, properties }: { channels: Channel[]; propert
                     {visibleCore.map((col) => {
                       if (col.id === "videos") return <td key={col.id} className={styles.num}>{fmtInt(c.videoCount)}</td>;
                       if (col.id === "views") return <td key={col.id} className={styles.num}>{fmtBig(c.viewCount)}</td>;
+                      if (col.id === "since") {
+                        const year = c.createdAtYoutube ? new Date(c.createdAtYoutube).getFullYear() : null;
+                        return (
+                          <td key={col.id} className={styles.num}>
+                            {year ?? "—"}
+                          </td>
+                        );
+                      }
                       return (
                         <td key={col.id}>
                           <span className={`${styles.status} ${styles[status]}`}>
