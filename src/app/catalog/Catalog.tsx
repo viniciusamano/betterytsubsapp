@@ -40,6 +40,8 @@ export function Catalog({ channels, properties }: { channels: Channel[]; propert
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const [isSyncing, startSync] = useTransition();
   const [isClassifying, startClassify] = useTransition();
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [classifyMessage, setClassifyMessage] = useState<string | null>(null);
   const columnsWrapRef = useRef<HTMLDivElement>(null);
 
   const chipsProperty = properties.find((p) => p.type === "multi_select" || p.type === "select") ?? null;
@@ -282,19 +284,40 @@ export function Catalog({ channels, properties }: { channels: Channel[]; propert
           <button
             className={styles.btn}
             disabled={isSyncing}
-            onClick={() => startSync(async () => { await runSync(50); })}
+            onClick={() =>
+              startSync(async () => {
+                setSyncMessage(null);
+                const result = await runSync(50);
+                const errorNote = result.errors.length > 0 ? ` — ${result.errors.length} erro(s): ${result.errors[0]}` : "";
+                setSyncMessage(`${result.synced} de ${result.total} sincronizados${errorNote}`);
+              })
+            }
           >
             {isSyncing ? "Sincronizando…" : "Sincronizar"}
           </button>
           <button
             className={styles.btn}
             disabled={isClassifying}
-            onClick={() => startClassify(async () => { await runClassification(30); })}
+            onClick={() =>
+              startClassify(async () => {
+                setClassifyMessage(null);
+                const result = await runClassification(30);
+                const errorNote = result.errors.length > 0 ? ` — ${result.errors.length} erro(s): ${result.errors[0]}` : "";
+                setClassifyMessage(`${result.classified} de ${result.total} classificados${errorNote}`);
+              })
+            }
           >
             {isClassifying ? "Classificando…" : "Classificar com IA"}
           </button>
         </div>
       </header>
+
+      {(syncMessage || classifyMessage) && (
+        <div className={styles.actionFeedback}>
+          {syncMessage && <div>Sincronizar: {syncMessage}</div>}
+          {classifyMessage && <div>Classificar: {classifyMessage}</div>}
+        </div>
+      )}
 
       <div className={styles.statusbar}>
         <div className={styles.sbCell}>

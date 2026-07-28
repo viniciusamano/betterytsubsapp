@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { channels, properties, propertyOptions, channelPropertyValues } from "@/db/schema";
 import { TAG_COLORS } from "./catalog-types";
@@ -113,6 +113,7 @@ export async function classifySegments(limit = 30): Promise<ClassifyResult> {
       ),
     )
     .where(isNull(channelPropertyValues.channelId))
+    .orderBy(asc(channels.id))
     .limit(limit);
 
   const errors: string[] = [];
@@ -131,7 +132,20 @@ export async function classifySegments(limit = 30): Promise<ClassifyResult> {
         .from(propertyOptions)
         .where(eq(propertyOptions.propertyId, property.id));
       const existingLabels = existingOptions.map((o) => o.label);
-      const results = await classifyBatch(client, batch, existingLabels);
+      const rawResults = await classifyBatch(client, batch, existingLabels);
+
+      // The model occasionally mistypes a channelId when echoing it back —
+      // a single bad id in a bulk insert would violate the FK constraint and
+      // fail the *whole* batch, silently blocking every valid result in it
+      // (this is why repeated clicks stopped making progress on one stuck
+      // batch). Drop anything that isn't one of the ids we actually sent.
+      const batchIds = new Set(batch.map((c) => c.id));
+      const results = rawResults.filter((r) => batchIds.has(r.channelId));
+      if (results.length < rawResults.length) {
+        errors.push(
+          `${rawResults.length - results.length} canal(is) ignorado(s): channelId retornado pela IA não bateu com nenhum canal do lote.`,
+        );
+      }
 
       // Resolve every label to an option id in memory, then do at most two
       // round trips for the whole batch — a query per channel is what timed

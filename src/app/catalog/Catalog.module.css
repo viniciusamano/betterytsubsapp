@@ -76,6 +76,18 @@
   flex-wrap: wrap;
 }
 
+.actionFeedback {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* status bar */
 .statusbar {
   display: flex;
