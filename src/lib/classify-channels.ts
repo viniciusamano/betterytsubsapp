@@ -25,6 +25,19 @@ async function ensureSegmentProperty() {
 type ChannelForClassification = { id: string; name: string; description: string | null };
 type ClassificationResult = { channelId: string; label: string };
 
+// `.slice()` counts UTF-16 code units, not full characters — cutting a
+// description at an arbitrary length can land in the middle of a surrogate
+// pair (e.g. an emoji), leaving a lone surrogate that breaks JSON encoding
+// when the request body is serialized. Strip any unpaired surrogate,
+// wherever it came from (our own slicing or already-corrupt source data).
+function stripLoneSurrogates(text: string): string {
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
+}
+
+function truncateSafely(text: string, maxLength: number): string {
+  return stripLoneSurrogates(stripLoneSurrogates(text).slice(0, maxLength));
+}
+
 const RESULT_SCHEMA = {
   type: "object",
   properties: {
@@ -51,7 +64,10 @@ async function classifyBatch(
   existingLabels: string[],
 ): Promise<ClassificationResult[]> {
   const channelList = batch
-    .map((c) => `- id: ${c.id}\n  nome: ${c.name}\n  descrição: ${(c.description ?? "").slice(0, 300)}`)
+    .map(
+      (c) =>
+        `- id: ${c.id}\n  nome: ${truncateSafely(c.name, 200)}\n  descrição: ${truncateSafely(c.description ?? "", 300)}`,
+    )
     .join("\n");
 
   const response = await client.messages.create({
